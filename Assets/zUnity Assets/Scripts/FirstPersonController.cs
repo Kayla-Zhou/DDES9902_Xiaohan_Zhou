@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -18,6 +18,16 @@ namespace StarterAssets
 		public float SprintSpeed = 6.0f;
 		[Tooltip("Rotation speed of the character")]
 		public float RotationSpeed = 1.0f;
+
+        [Header("Desktop Mouse")]
+        [Tooltip("Match small mouse movements to screen pixels using the active camera FOV and viewport height.")]
+        public bool MatchPointerPixels;
+        [Range(0.25f, 3f)]
+        [Tooltip("Personal mouse speed multiplier. 1 uses the screen-pixel match.")]
+        public float MouseSensitivity = 1f;
+        [Min(0.0001f)]
+        [Tooltip("Existing mouse Look binding scale, before this controller. Starter Assets uses 0.05.")]
+        public float MouseActionScale = 0.05f;
 		[Tooltip("Acceleration and deceleration")]
 		public float SpeedChangeRate = 10.0f;
 
@@ -71,6 +81,7 @@ namespace StarterAssets
 		private CharacterController _controller;
 		private StarterAssetsInputs _input;
 		private GameObject _mainCamera;
+        private Camera _viewCamera;
 
 		private const float _threshold = 0.01f;
 
@@ -97,6 +108,7 @@ namespace StarterAssets
 
 		private void Start()
 		{
+            _viewCamera = _mainCamera != null ? _mainCamera.GetComponent<Camera>() : null;
 			_controller = GetComponent<CharacterController>();
 			_input = GetComponent<StarterAssetsInputs>();
 #if ENABLE_INPUT_SYSTEM
@@ -131,14 +143,23 @@ namespace StarterAssets
 
 		private void CameraRotation()
 		{
+            // A released desktop cursor must never continue to turn the camera.
+            if (IsCurrentDeviceMouse && (!Application.isFocused || Cursor.lockState != CursorLockMode.Locked))
+            {
+                _input.look = Vector2.zero;
+                return;
+            }
 			// if there is an input
-			if (_input.look.sqrMagnitude >= _threshold)
+			if (_input.look.sqrMagnitude > (IsCurrentDeviceMouse && MatchPointerPixels ? 0f : _threshold))
 			{
 				//Don't multiply mouse input by Time.deltaTime
 				float deltaTimeMultiplier = IsCurrentDeviceMouse ? 1.0f : Time.deltaTime;
 				
-				_cinemachineTargetPitch += _input.look.y * RotationSpeed * deltaTimeMultiplier;
-				_rotationVelocity = _input.look.x * RotationSpeed * deltaTimeMultiplier;
+                float rotationScale = IsCurrentDeviceMouse && MatchPointerPixels
+                    ? MouseRotationScale() * MouseSensitivity
+                    : RotationSpeed * deltaTimeMultiplier;
+                _cinemachineTargetPitch += _input.look.y * rotationScale;
+                _rotationVelocity = _input.look.x * rotationScale;
 
 				// clamp our pitch rotation
 				_cinemachineTargetPitch = ClampAngle(_cinemachineTargetPitch, BottomClamp, TopClamp);
@@ -150,6 +171,18 @@ namespace StarterAssets
 				transform.Rotate(Vector3.up * _rotationVelocity);
 			}
 		}
+
+        private float MouseRotationScale()
+        {
+            if (_viewCamera == null || _viewCamera.orthographic) return RotationSpeed;
+            // Convert processed Look units back to pixels, then to the camera's
+            // angular movement per pixel near the centre. No frame-time scaling,
+            // smoothing or acceleration; keep equal X/Y speed and the input Y sign.
+            float viewportHeight = Mathf.Max(1f, _viewCamera.pixelHeight);
+            float degreesPerPixel = 2f * Mathf.Tan(_viewCamera.fieldOfView * 0.5f * Mathf.Deg2Rad)
+                * Mathf.Rad2Deg / viewportHeight;
+            return degreesPerPixel / Mathf.Max(0.0001f, MouseActionScale);
+        }
 
 		private void Move()
 		{

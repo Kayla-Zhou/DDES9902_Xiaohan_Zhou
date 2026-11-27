@@ -38,9 +38,12 @@ namespace BalconyReady
                 item.transform.rotation = Quaternion.identity;
             }
             ReturnToStart();
-            taskText.text = round == 1
-                ? "<b>01 / PREPARE</b>\nFind the pot, chair and basket.\nMove them to suitable indoor bays.\nThen walk inside and CHECK.\n\nSelect an item, then select a bay.\nClick the item again to cancel."
-                : "<b>02 / CHECK AGAIN</b>\nThe layout has changed.\nPrepare all FOUR movable items.\nAlso inspect the indoor passage.\n\nDo not assume that indoors\nalways means well placed.";
+            taskText.text = (round == 1
+                ? "<b>ROUND 1 / 3 ITEMS</b>"
+                : "<b>ROUND 2 / 4 ITEMS</b>")
+                + "\n\n<b>STEP 1 / SELECT</b>\nClick a loose item."
+                + "\n<b>STEP 2 / PLACE</b>\nClick an indoor bay's post."
+                + "\n<b>STEP 3 / CHECK</b>\nInside: CHECK, read and revise.";
             feedbackText.text = "<b>BEFORE THE STORM</b>\nThis is a calm-weather preparation exercise.\n\nExplore first. The CHECK button explains\nyour current arrangement. You can revise it.\n\nNo countdown. No speed bonus.";
         }
 
@@ -61,21 +64,21 @@ namespace BalconyReady
             if (selected != null) selected.SetSelected(false);
             selected = item;
             selected.SetSelected(true);
-            selectionText.text = "<b>SELECTED: " + item.displayName.ToUpperInvariant() + "</b>\nWalk to a bay and click its post.\nThe item stays here until you place it.";
+            selectionText.text = "<b>STEP 2 / PLACE: " + item.displayName.ToUpperInvariant() + "</b>\nWalk to a bay and click its post.\nThe item stays here until you place it.";
         }
 
         public void CancelSelection()
         {
             if (selected != null) selected.SetSelected(false);
             selected = null;
-            if (selectionText != null) selectionText.text = "<b>NOTHING SELECTED</b>\nLook at an item and left-click.\nWASD: move / Mouse: look / Esc: cursor";
+            if (selectionText != null) selectionText.text = "<b>STEP 1 / SELECT</b>\nLook at an item and left-click.\nWASD: move / Mouse: look\nEsc: release / Click: resume";
         }
 
         public void Place(BRSlot slot)
         {
             if (selected == null)
             {
-                selectionText.text = "<b>SELECT AN ITEM FIRST</b>\nClick a pot, chair, basket or toy,\nthen click a bay's placement post.";
+                selectionText.text = "<b>STEP 1 / SELECT AN ITEM</b>\nClick a pot, chair, basket or toy,\nthen click a bay's placement post.";
                 return;
             }
             if (slot.occupant != null && slot.occupant != selected)
@@ -91,7 +94,7 @@ namespace BalconyReady
             roundComplete = false;
             moves++;
             CancelSelection();
-            feedbackText.text = "<b>ARRANGEMENT CHANGED</b>\n" + item.displayName + " placed at " + slot.displayName + ".\n\nWalk the space again.\nUse CHECK indoors for an explanation.\nPrevious checks no longer confirm this layout.";
+            feedbackText.text = "<b>STEP 3 / CHECK OR REVISE</b>\n" + item.displayName + " placed at " + slot.displayName + ".\n\nWalk the space again.\nUse CHECK indoors for an explanation.\nPrevious checks no longer confirm this layout.";
         }
 
         public void Review()
